@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/login_screen.dart';
+import 'routes/app_routes.dart';
 import 'theme/app_colors.dart';
 
 void main() => runApp(const JobConnectApp());
@@ -18,7 +18,9 @@ class JobConnectApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryButton),
         scaffoldBackgroundColor: AppColors.background,
       ),
-      home: const LoginScreen(),
+      initialRoute: AppRoutes.login,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
+      onUnknownRoute: AppRoutes.onUnknownRoute,
     );
   }
 }

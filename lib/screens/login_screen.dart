@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/validators.dart';
 import '../widgets/alt_auth_button.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/auth_tab_switcher.dart';
 import '../widgets/login_header.dart';
 import '../widgets/primary_button.dart';
+import '../routes/app_routes.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,12 +20,28 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // (1) key untuk Form + controller
+  final _formKey = GlobalKey<FormState>();
   final _idController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _submitted = false; // true setelah tombol Masuk pernah ditekan
 
+  @override
+  void initState() {
+    super.initState();
+    // Setelah pernah submit, validasi ulang setiap kali pengguna mengetik
+    _idController.addListener(_revalidate);
+    _passwordController.addListener(_revalidate);
+  }
+
+  void _revalidate() {
+    if (_submitted) _formKey.currentState?.validate();
+  }
+
+  // (2) buang controller saat layar ditutup
   @override
   void dispose() {
     _idController.dispose();
@@ -31,10 +49,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _onLoginPressed() {
-    // TODO: hubungkan ke logika login (belum termasuk tugas Praktikum 1).
-  }
+  // (3) dijalankan saat tombol Masuk ditekan
+void _onLoginPressed() {
+  _submitted = true;
+  final isValid = _formKey.currentState?.validate() ?? false;
+  if (!isValid) return;
 
+  Navigator.pushReplacementNamed(context, AppRoutes.home);
+}
   void _goToRegister() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const RegisterScreen()),
@@ -106,59 +128,76 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildNotice(),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'Email Mahasiswa / NIM',
-            hint: 'contoh: nama@mahasiswa.ac.id atau NIM',
-            icon: Icons.badge_outlined,
-            controller: _idController,
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          AppTextField(
-            label: 'Kata Sandi',
-            hint: 'Masukkan kata sandi akun',
-            icon: Icons.lock_outline,
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            suffix: IconButton(
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-              icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-                size: 20,
-                color: AppColors.textSecondary,
+      // (4) Form membungkus Column yang berisi field
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildNotice(),
+            const SizedBox(height: AppSpacing.lg),
+            // (5) field + validator
+            _ValidatedField(
+              validator: () => Validators.requiredField(
+                _idController.text,
+                fieldName: 'Email/NIM',
+              ),
+              child: AppTextField(
+                label: 'Email Mahasiswa / NIM',
+                hint: 'contoh: nama@mahasiswa.ac.id atau NIM',
+                icon: Icons.badge_outlined,
+                controller: _idController,
+                keyboardType: TextInputType.emailAddress,
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          _buildUtilityRow(),
-          const SizedBox(height: AppSpacing.lg),
-          PrimaryButton(
-            label: 'Masuk',
-            trailingIcon: Icons.arrow_forward,
-            onPressed: _onLoginPressed,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          _buildDivider(),
-          const SizedBox(height: AppSpacing.lg),
-          AltAuthButton(
-            label: 'Masuk dengan SSO Kampus',
-            icon: const Icon(Icons.account_balance, size: 18, color: AppColors.primary),
-            onPressed: () {},
-          ),
-          const SizedBox(height: 10),
-          AltAuthButton(
-            label: 'Google',
-            icon: const _GoogleMark(),
-            onPressed: () {},
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+            _ValidatedField(
+              validator: () => Validators.password(_passwordController.text),
+              child: AppTextField(
+                label: 'Kata Sandi',
+                hint: 'Masukkan kata sandi akun',
+                icon: Icons.lock_outline,
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                suffix: IconButton(
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _buildUtilityRow(),
+            const SizedBox(height: AppSpacing.lg),
+            // (6) tombol memanggil _onLoginPressed
+            PrimaryButton(
+              label: 'Masuk',
+              trailingIcon: Icons.arrow_forward,
+              onPressed: _onLoginPressed,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _buildDivider(),
+            const SizedBox(height: AppSpacing.lg),
+            AltAuthButton(
+              label: 'Masuk dengan SSO Kampus',
+              icon: const Icon(Icons.account_balance,
+                  size: 18, color: AppColors.primary),
+              onPressed: () {},
+            ),
+            const SizedBox(height: 10),
+            AltAuthButton(
+              label: 'Google',
+              icon: const _GoogleMark(),
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -243,6 +282,41 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Text('Daftar sekarang', style: AppTextStyles.footerLink),
         ),
       ],
+    );
+  }
+}
+
+/// Pembungkus validasi: menampilkan widget aslinya (tampilan tidak berubah),
+/// lalu pesan error di bawahnya jika validator mengembalikan teks.
+class _ValidatedField extends StatelessWidget {
+  final Widget child;
+  final String? Function() validator;
+
+  const _ValidatedField({required this.child, required this.validator});
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<String>(
+      validator: (_) => validator(),
+      builder: (field) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            child,
+            if (field.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Text(
+                  field.errorText!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }
