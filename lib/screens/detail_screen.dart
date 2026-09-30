@@ -1,80 +1,59 @@
 import 'package:flutter/material.dart';
 import '../models/job_model.dart';
+import '../routes/app_routes.dart';
 
 class DetailScreen extends StatefulWidget {
-  const DetailScreen({super.key});
+  final JobModel job;
+  const DetailScreen({super.key, required this.job});
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
 class _DetailScreenState extends State<DetailScreen> {
-  String? _catatanPribadi;
+  String? _catatan;
+
+  Future<void> _bukaFormCatatan() async {
+    final hasil = await Navigator.pushNamed<String>(
+      context,
+      AppRoutes.catatanForm,
+    );
+
+    if (!mounted || hasil == null) return;
+
+    setState(() => _catatan = hasil);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Catatan berhasil disimpan')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Menangkap data JobModel yang dikirim dari Home (Poin g)
-    final job = ModalRoute.of(context)!.settings.arguments as JobModel;
+    final job = widget.job;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(job.title),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              job.title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text('${job.company} - ${job.location}', style: const TextStyle(fontSize: 16)),
-            Text('Gaji: ${job.salary}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-            const Divider(height: 32),
-            const Text('Deskripsi Pekerjaan:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(job.description),
-            const SizedBox(height: 24),
-            
-            // Menampilkan catatan jika sudah diisi dari Form Catatan
-            if (_catatanPribadi != null) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Catatan Kamu:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(_catatanPribadi!),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Tombol ke Form Catatan (Poin h)
-            ElevatedButton.icon(
-              onPressed: () async {
-                // Navigasi ke Form dan menunggu data balikan (Poin h)
-                final result = await Navigator.pushNamed(context, '/form-catatan');
-                if (result != null && result is String) {
-                  setState(() {
-                    _catatanPribadi = result; // Menerima data
-                  });
-                }
-              },
-              icon: const Icon(Icons.note_add),
-              label: Text(_catatanPribadi == null ? 'Tambah Catatan' : 'Edit Catatan'),
-            ),
-          ],
-        ),
+      appBar: AppBar(title: Text(job.title)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(job.title, style: Theme.of(context).textTheme.headlineSmall),
+          const SizedBox(height: 4),
+          Text('${job.company} • ${job.location}'),
+          Text(job.salary, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Text(job.description),
+          const Divider(height: 32),
+          Text(
+            _catatan == null ? 'Belum ada catatan.' : 'Catatan: $_catatan',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _bukaFormCatatan,
+            icon: const Icon(Icons.edit_note),
+            label: const Text('Tulis Catatan'),
+          ),
+        ],
       ),
     );
   }

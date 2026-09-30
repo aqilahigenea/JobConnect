@@ -1,101 +1,115 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/job_provider.dart';
+import '../data/dummy_jobs.dart';
 import '../models/job_model.dart';
+import '../routes/app_routes.dart';
+import '../widgets/state_views.dart';
 
-class HomeScreen extends StatelessWidget {
+enum ViewStatus { loading, success, error }
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  ViewStatus _status = ViewStatus.loading;
+  List<JobModel> _items = [];
+  String _errorMessage = '';
+  bool _simulateError = false; 
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    setState(() => _status = ViewStatus.loading);
+
+    try {
+      await Future.delayed(const Duration(seconds: 2));
+
+      if (_simulateError) {
+        throw Exception('Gagal memuat data. Periksa koneksi internet.');
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _items = List.from(dummyJobs);
+        _status = ViewStatus.success;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _status = ViewStatus.error;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('JobConnect - Beranda'),
-      ),
-      body: Consumer<JobProvider>(
-        builder: (context, provider, child) {
-          // 1. Loading State
-          if (provider.state == HomeState.loading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          // 2. Error State
-          if (provider.state == HomeState.error) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                  const SizedBox(height: 12),
-                  Text(
-                    provider.errorMessage,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchJobs(),
-                    child: const Text('Coba Lagi'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // 3. Empty State
-          if (provider.state == HomeState.empty || provider.jobs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.work_off_outlined, size: 60, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Belum ada lowongan pekerjaan tersedia.',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => provider.fetchJobs(),
-                    child: const Text('Muat Ulang'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // 4. Loaded State (Menampilkan daftar pekerjaan)
-          return ListView.builder(
-            itemCount: provider.jobs.length,
-            padding: const EdgeInsets.all(12),
-            itemBuilder: (context, index) {
-              final JobModel job = provider.jobs[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  title: Text(
-                    job.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text('${job.company} • ${job.location}\n${job.salary}'),
-                  isThreeLine: true,
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    // Poin g: Navigasi Home -> Detail
-                    Navigator.pushNamed(
-                      context,
-                      '/detail',
-                      arguments: job,
-                    );
-                  },
-                ),
-              );
+        title: const Text('JobConnect - Home'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.bug_report,
+              color: _simulateError ? Colors.red : Colors.grey,
+            ),
+            tooltip: _simulateError ? 'Matikan Simulasi Error' : 'Aktifkan Simulasi Error',
+            onPressed: () {
+              setState(() {
+                _simulateError = !_simulateError;
+              });
+              _loadItems();
             },
-          );
-        },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
+          ),
+        ],
       ),
+      body: _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    return switch (_status) {
+      ViewStatus.loading => const LoadingView(),
+      ViewStatus.error => ErrorView(message: _errorMessage, onRetry: _loadItems),
+      ViewStatus.success => _buildList(),
+    };
+  }
+
+  Widget _buildList() {
+    if (_items.isEmpty) {
+      return const EmptyView(message: 'Belum ada data lowongan.');
+    }
+
+    return ListView.builder(
+      itemCount: _items.length,
+      itemBuilder: (context, index) {
+        final item = _items[index];
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text('${item.company} • ${item.location}\n${item.salary}'),
+            isThreeLine: true,
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.pushNamed(
+              context,
+              AppRoutes.detail,
+              arguments: item,
+            ),
+          ),
+        );
+      },
     );
   }
 }
