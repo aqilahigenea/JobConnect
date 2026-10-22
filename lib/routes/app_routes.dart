@@ -1,53 +1,63 @@
 import 'package:flutter/material.dart';
 import '../models/job_model.dart';
-import '../screens/login_screen.dart';
-import '../screens/home_screen.dart';
 import '../screens/detail_screen.dart';
-import '../screens/catatan_form_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/login_screen.dart';
 import '../screens/not_found_screen.dart';
 
+// Kelas utama untuk mengelola semua rute/pindah halaman di aplikasi
 class AppRoutes {
-  AppRoutes._();
-
+  // Nama-nama rute halaman (constants)
   static const String login = '/login';
   static const String home = '/home';
   static const String detail = '/detail';
-  static const String catatanForm = '/catatan-form';
 
+  // Fungsi untuk menentukan halaman mana yang dibuka berdasarkan nama rutenya
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
+      // Menampilkan halaman Login
       case login:
         return MaterialPageRoute<void>(
           builder: (_) => const LoginScreen(),
           settings: settings,
         );
+
+      // Menampilkan halaman Beranda
       case home:
         return MaterialPageRoute<void>(
           builder: (_) => const HomeScreen(),
           settings: settings,
         );
+
+      // Menampilkan halaman Detail Lowongan
       case detail:
         final args = settings.arguments;
-        if (args is JobModel) {
-          return MaterialPageRoute<void>(
-            builder: (_) => DetailScreen(job: args),
+        // Memastikan data yang dikirim valid (bisa berupa Map atau JobModel)
+        if (args is Map<String, dynamic> || args is JobModel) {
+          return MaterialPageRoute<dynamic>(
+            builder: (_) => const DetailScreen(),
             settings: settings,
           );
         }
-        return null;
-      case catatanForm:
-        return MaterialPageRoute<String>(
-          builder: (_) => const CatatanFormScreen(),
+        // Jika data tidak valid, tampilkan halaman 404 (Not Found)
+        return MaterialPageRoute<void>(
+          builder: (_) => const NotFoundScreen(),
           settings: settings,
         );
+
+      // Jika rute tidak terdaftar di switch, tampilkan halaman 404
       default:
-        return null;
+        return MaterialPageRoute<void>(
+          builder: (_) => const NotFoundScreen(),
+          settings: settings,
+        );
     }
   }
 
+  // Fungsi cadangan jika terjadi error rute tidak dikenal dari main.dart
   static Route<dynamic> onUnknownRoute(RouteSettings settings) {
     return MaterialPageRoute<void>(
-      builder: (_) => NotFoundScreen(routeName: settings.name),
+      builder: (_) => const NotFoundScreen(),
       settings: settings,
     );
   }
