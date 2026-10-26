@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Tampilan saat data sedang dimuat
 class LoadingView extends StatelessWidget {
   final String message;
   const LoadingView({super.key, this.message = 'Memuat data...'});
@@ -20,7 +19,6 @@ class LoadingView extends StatelessWidget {
   }
 }
 
-/// Tampilan saat data kosong
 class EmptyView extends StatelessWidget {
   final String message;
   final IconData icon;
@@ -48,7 +46,6 @@ class EmptyView extends StatelessWidget {
   }
 }
 
-/// Tampilan saat terjadi error
 class ErrorView extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
@@ -79,6 +76,35 @@ class ErrorView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ErrorBanner extends StatelessWidget {
+  final String message;
+  const ErrorBanner({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline, color: colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: colorScheme.onErrorContainer),
+            ),
+          ),
+        ],
       ),
     );
   }

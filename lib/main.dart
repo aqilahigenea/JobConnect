@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'routes/app_routes.dart';
 import 'theme/app_colors.dart';
 
@@ -17,7 +18,6 @@ class JobConnectApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primaryButton),
         scaffoldBackgroundColor: AppColors.background,
       ),
-      // Navigasi Named Routes murni menggunakan AppRoutes
       initialRoute: AppRoutes.login,
       onGenerateRoute: AppRoutes.onGenerateRoute,
       onUnknownRoute: AppRoutes.onUnknownRoute,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 
-/// Halaman cadangan ketika route tidak dikenal atau argument tidak valid
 class NotFoundScreen extends StatelessWidget {
   final String? routeName;
   final String message;

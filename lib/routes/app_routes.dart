@@ -1,63 +1,77 @@
 import 'package:flutter/material.dart';
-import '../models/job_model.dart';
+import '../models/job.dart';
+import '../screens/catatan_form_screen.dart';
 import '../screens/detail_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/not_found_screen.dart';
 
-// Kelas utama untuk mengelola semua rute/pindah halaman di aplikasi
 class AppRoutes {
-  // Nama-nama rute halaman (constants)
+  AppRoutes._();
+
   static const String login = '/login';
   static const String home = '/home';
   static const String detail = '/detail';
+  static const String catatanForm = '/catatan-form';
 
-  // Fungsi untuk menentukan halaman mana yang dibuka berdasarkan nama rutenya
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // Menampilkan halaman Login
       case login:
         return MaterialPageRoute<void>(
           builder: (_) => const LoginScreen(),
           settings: settings,
         );
-
-      // Menampilkan halaman Beranda
       case home:
         return MaterialPageRoute<void>(
           builder: (_) => const HomeScreen(),
           settings: settings,
         );
-
-      // Menampilkan halaman Detail Lowongan
       case detail:
         final args = settings.arguments;
-        // Memastikan data yang dikirim valid (bisa berupa Map atau JobModel)
-        if (args is Map<String, dynamic> || args is JobModel) {
-          return MaterialPageRoute<dynamic>(
-            builder: (_) => const DetailScreen(),
+        if (args is Job) {
+          return MaterialPageRoute<void>(
+            builder: (_) => DetailScreen(item: args),
             settings: settings,
           );
         }
-        // Jika data tidak valid, tampilkan halaman 404 (Not Found)
-        return MaterialPageRoute<void>(
-          builder: (_) => const NotFoundScreen(),
-          settings: settings,
-        );
+        return null; // data salah/kosong -> halaman 404
+      case catatanForm:
+        final formArgs = settings.arguments;
+        if (formArgs is Job) {
+          return PageRouteBuilder<String>(
+            settings: settings,
+            opaque: false,
+            barrierDismissible: true,
+            barrierLabel: 'Tutup',
+            barrierColor: const Color(0x80263143),
+            transitionDuration: const Duration(milliseconds: 300),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                CatatanFormScreen(job: formArgs),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                )),
+                child: child,
+              );
+            },
+          );
+        }
+        return null; // data salah/kosong -> halaman 404
 
-      // Jika rute tidak terdaftar di switch, tampilkan halaman 404
       default:
-        return MaterialPageRoute<void>(
-          builder: (_) => const NotFoundScreen(),
-          settings: settings,
-        );
+        return null; // route tidak terdaftar -> halaman 404
     }
   }
 
-  // Fungsi cadangan jika terjadi error rute tidak dikenal dari main.dart
   static Route<dynamic> onUnknownRoute(RouteSettings settings) {
     return MaterialPageRoute<void>(
-      builder: (_) => const NotFoundScreen(),
+      builder: (_) => NotFoundScreen(routeName: settings.name),
       settings: settings,
     );
   }

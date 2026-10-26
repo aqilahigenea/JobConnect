@@ -1,4 +1,3 @@
-/// Kumpulan fungsi validasi yang dapat dipakai ulang.
 class Validators {
   Validators._();
 
@@ -34,6 +33,29 @@ class Validators {
     if (requiredError != null) return requiredError;
     if (value!.trim().length < min) {
       return '$fieldName minimal $min karakter';
+    }
+    return null;
+  }
+
+  static String? rating(String? value) {
+    final requiredError = requiredField(value, fieldName: 'Rating');
+    if (requiredError != null) return requiredError;
+    final number = int.tryParse(value!.trim());
+    if (number == null) return 'Rating harus berupa angka';
+    if (number < 1 || number > 5) return 'Rating harus di antara 1 sampai 5';
+    return null;
+  }
+  static String? pilihanMinimal(
+    Set<String> terpilih, {
+    required String namaField,
+    int min = 1,
+    int? max,
+  }) {
+    if (terpilih.length < min) {
+      return "Pilih minimal $min $namaField";
+    }
+    if (max != null && terpilih.length > max) {
+      return "Pilih maksimal $max $namaField";
     }
     return null;
   }
