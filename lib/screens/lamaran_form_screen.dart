@@ -206,8 +206,9 @@ class _LamaranFormScreenState extends State<LamaranFormScreen> {
       canPop: !_hasUnsavedInput && !_isSubmitting,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop || _isSubmitting) return; // saat mengirim, Back diabaikan
+        final nav = Navigator.of(context);
         final shouldLeave = await _confirmDiscard();
-        if (shouldLeave && mounted) Navigator.pop(context);
+        if (shouldLeave && mounted) nav.pop();
       },
       child: Scaffold(
         backgroundColor: _pageBg,
@@ -392,7 +393,7 @@ class _LamaranFormScreenState extends State<LamaranFormScreen> {
         const Spacer(),
         if (trailing != null)
           Text(trailing, style: _jakarta(12, FontWeight.w600, _slate500)),
-        if (trailingWidget != null) trailingWidget,
+        ?trailingWidget,
       ],
     );
   }

@@ -23,4 +23,5 @@ class AppColors {
   static const textSecondary = Color(0xFF434655);
   static const textHint = Color(0xFF737686);
   static const checkboxBorder = Color(0xFF767676);
+  static const error = Color(0xFFBA1A1A);
 }

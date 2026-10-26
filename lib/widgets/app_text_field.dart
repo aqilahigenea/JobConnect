@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
 
-/// Input teks dengan label di atas dan ikon di kiri.
+/// Input teks dengan label di atas, ikon di kiri, dan pesan error di bawah.
 class AppTextField extends StatelessWidget {
   const AppTextField({
     super.key,
@@ -15,6 +15,8 @@ class AppTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.suffix,
+    this.onChanged,
+    this.errorText,
   });
 
   final String label;
@@ -24,16 +26,22 @@ class AppTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffix;
+  final ValueChanged<String>? onChanged;
+  final String? errorText;
 
   OutlineInputBorder _border(Color color, double width) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(AppRadius.sm),
-      borderSide: width == 0 ? BorderSide.none : BorderSide(color: color, width: width),
+      borderSide: width == 0
+          ? BorderSide.none
+          : BorderSide(color: color, width: width),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final hasError = errorText != null && errorText!.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -42,13 +50,23 @@ class AppTextField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: obscureText,
-          keyboardType: keyboardType,
+          // Menggunakan TextInputType.visiblePassword dan TextCapitalization.none
+          // untuk mencegah bug input platform/keyboard yang mengunci tombol backspace
+          keyboardType: keyboardType ??
+              (obscureText
+                  ? TextInputType.visiblePassword
+                  : TextInputType.text),
+          textCapitalization: TextCapitalization.none,
+          onChanged: onChanged,
+          enableSuggestions: false,
+          autocorrect: false,
           style: AppTextStyles.input,
           cursorColor: AppColors.primaryButton,
           decoration: InputDecoration(
             hintText: hint,
             hintMaxLines: 1,
-            hintStyle: AppTextStyles.hint.copyWith(overflow: TextOverflow.ellipsis),
+            hintStyle:
+                AppTextStyles.hint.copyWith(overflow: TextOverflow.ellipsis),
             filled: true,
             fillColor: AppColors.inputFill,
             prefixIcon: Icon(icon, size: 18, color: AppColors.textSecondary),
@@ -61,11 +79,31 @@ class AppTextField extends StatelessWidget {
               horizontal: AppSpacing.lg,
               vertical: 15.5,
             ),
-            border: _border(Colors.transparent, 0),
-            enabledBorder: _border(Colors.transparent, 0),
-            focusedBorder: _border(AppColors.primaryButton, 1.5),
+            border: _border(
+              hasError ? AppColors.error : Colors.transparent,
+              hasError ? 1 : 0,
+            ),
+            enabledBorder: _border(
+              hasError ? AppColors.error : Colors.transparent,
+              hasError ? 1 : 0,
+            ),
+            focusedBorder: _border(
+              hasError ? AppColors.error : AppColors.primaryButton,
+              1.5,
+            ),
           ),
         ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Text(
+              errorText!,
+              style: const TextStyle(
+                color: AppColors.error,
+                fontSize: 12,
+              ),
+            ),
+          ),
       ],
     );
   }

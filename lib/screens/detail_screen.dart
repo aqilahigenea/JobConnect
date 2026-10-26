@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
 import '../models/job.dart';
+import '../models/lamaran.dart';
+import '../routes/app_routes.dart';
 
 // Warna dari desain Figma
 const _bg = Color(0xFFF9F9FF);
@@ -49,6 +50,33 @@ class _DetailScreenState extends State<DetailScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Lamaran dan catatan berhasil disimpan')),
     );
+  }
+
+  Future<void> _lamarPekerjaan() async {
+    // 1. Buka form pengajuan lamaran
+    final lamaran = await Navigator.pushNamed<Lamaran>(
+      context,
+      AppRoutes.lamaranForm,
+      arguments: item,
+    );
+    if (!mounted || lamaran == null) return; // pengguna membatalkan
+
+    // 2. Buka layar status pengajuan sukses (FR-06 Feedback)
+    final lihatStatus = await Navigator.pushNamed<bool>(
+      context,
+      AppRoutes.lamaranSukses,
+      arguments: lamaran,
+    );
+    if (!mounted) return;
+
+    // 3. Jika pengguna memilih "Lihat Status Lamaran", arahkan ke Detail Lamaran (FR-07)
+    if (lihatStatus == true) {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.lamaranDetail,
+        arguments: lamaran,
+      );
+    }
   }
   
   void _snack(BuildContext context, String msg) {
@@ -130,8 +158,6 @@ class _DetailScreenState extends State<DetailScreen> {
             _buildRequirements(),
             const SizedBox(height: 16),
           ],
-          _buildLocation(context),
-          const SizedBox(height: 16),
           _buildLocation(context),
           const SizedBox(height: 16),
           _buildCatatan(),
@@ -788,7 +814,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 child: SizedBox(
                   height: 48,
                   child: FilledButton.icon(
-                    onPressed: () => _snack(context, 'Lamaran dikirim'),
+                    onPressed: _lamarPekerjaan,
                     style: FilledButton.styleFrom(
                       backgroundColor: _blue,
                       shape: RoundedRectangleBorder(

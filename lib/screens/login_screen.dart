@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/user_session.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
@@ -10,7 +11,6 @@ import '../widgets/app_text_field.dart';
 import '../widgets/auth_tab_switcher.dart';
 import '../widgets/login_header.dart';
 import '../widgets/primary_button.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -55,13 +55,14 @@ class _LoginScreenState extends State<LoginScreen> {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
+    final email = _idController.text.trim();
+    UserSession().login(email);
+
     Navigator.pushReplacementNamed(context, AppRoutes.home);
   }
 
   void _goToRegister() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const RegisterScreen()),
-    );
+    Navigator.pushReplacementNamed(context, AppRoutes.register);
   }
 
   @override

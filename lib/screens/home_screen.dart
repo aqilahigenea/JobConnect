@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/job_repository.dart';
+import '../data/user_session.dart';
 import '../models/job.dart';
 import '../routes/app_routes.dart';
 import '../widgets/state_views.dart';
@@ -112,6 +113,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _openProfile() {
+    Navigator.pushNamed(context, AppRoutes.profil);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,7 +131,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: const _BottomNav(),
+      bottomNavigationBar: _BottomNav(
+        onProfileTap: _openProfile,
+        onExploreTap: () => setState(() => _selectedFilter = 'Semua'),
+      ),
     );
   }
 
@@ -182,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => setState(() => _selectedFilter = 'Semua'),
                 child: Row(
                   children: [
                     Text('Lihat Semua',
@@ -254,79 +262,93 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _C.tagBlue,
-                  border: Border.all(color: const Color(0xFF2563EB), width: 2),
-                ),
-                alignment: Alignment.center,
-                child:
-                    Text('A', style: _inter(18, FontWeight.w600, _C.primary)),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
+          InkWell(
+            onTap: _openProfile,
+            borderRadius: BorderRadius.circular(24),
+            child: Stack(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6BD8CB),
                     shape: BoxShape.circle,
-                    border: Border.all(color: _C.surface, width: 2),
+                    color: _C.tagBlue,
+                    border: Border.all(color: const Color(0xFF2563EB), width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    UserSession().displayInitial,
+                    style: _inter(18, FontWeight.w600, _C.primary),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Halo, Aqila 👋', style: _heading),
-                Text(
-                  'Temukan peluang kariermu hari ini',
-                  style: _inter(12, FontWeight.w400, _C.textSec,
-                      height: 16 / 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6BD8CB),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _C.surface, width: 2),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          Stack(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _C.chip,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.notifications_none,
-                    size: 22, color: _C.text),
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: _C.red,
-                    shape: BoxShape.circle,
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: _openProfile,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Halo, ${UserSession().displayName} 👋',
+                      style: _heading),
+                  Text(
+                    'Temukan peluang kariermu hari ini',
+                    style: _inter(12, FontWeight.w400, _C.textSec,
+                        height: 16 / 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  child: Text('3',
-                      style: _inter(10, FontWeight.w700, Colors.white)),
-                ),
+                ],
               ),
-            ],
+            ),
+          ),
+          InkWell(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.lamaranList),
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _C.chip,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.notifications_none,
+                      size: 22, color: _C.text),
+                ),
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: _C.red,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text('3',
+                        style: _inter(10, FontWeight.w700, Colors.white)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -688,9 +710,15 @@ class _JobCard extends StatelessWidget {
   }
 }
 
-/// Navigasi bawah (tampilan saja; pindah tab bukan bagian latihan ini).
+/// Navigasi bawah dengan aksi tab.
 class _BottomNav extends StatelessWidget {
-  const _BottomNav();
+  final VoidCallback? onProfileTap;
+  final VoidCallback? onExploreTap;
+
+  const _BottomNav({
+    this.onProfileTap,
+    this.onExploreTap,
+  });
 
   static const _items = [
     (Icons.home_filled, 'Beranda'),
@@ -722,13 +750,20 @@ class _BottomNav extends StatelessWidget {
             children: [
               for (var i = 0; i < _items.length; i++)
                 InkWell(
-                  // FR-07: tab "Lamaran" (indeks 2) membuka daftar lamaran
-                  onTap: i == 2
-                      ? () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.lamaranList,
-                          )
-                      : null,
+                  onTap: () {
+                    switch (i) {
+                      case 1:
+                        onExploreTap?.call();
+                      case 2:
+                        Navigator.pushNamed(context, AppRoutes.lamaranList);
+                      case 3:
+                        Navigator.pushNamed(context, AppRoutes.profil);
+                      case 4:
+                        onProfileTap?.call();
+                      default:
+                        break;
+                    }
+                  },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Column(

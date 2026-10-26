@@ -12,11 +12,16 @@ import '../screens/lamaran_list_screen.dart';
 import '../screens/lamaran_sukses_screen.dart';
 import '../screens/login_screen.dart';
 import '../screens/not_found_screen.dart';
+import '../screens/preferensi_form_screen.dart';
+import '../screens/preferensi_kosong_screen.dart';
+import '../screens/profil_screen.dart';
+import '../screens/register_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
 
   static const String login = '/login';
+  static const String register = '/register';
   static const String home = '/home';
   static const String detail = '/detail';
   static const String catatanForm = '/catatan-form';
@@ -25,6 +30,9 @@ class AppRoutes {
   static const String lamaranList = '/lamaran-list'; // FR-07
   static const String lamaranDetail = '/lamaran-detail'; // FR-07
   static const String lamaranEdit = '/lamaran-edit'; // FR-08
+  static const String profil = '/profil'; // Modul 3
+  static const String preferensiKosong = '/preferensi-kosong'; // Modul 3 (FR-11 UI)
+  static const String preferensiForm = '/preferensi-form'; // Modul 3 (FR-11 & FR-13)
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -33,9 +41,29 @@ class AppRoutes {
           builder: (_) => const LoginScreen(),
           settings: settings,
         );
+      case register:
+        return MaterialPageRoute<void>(
+          builder: (_) => const RegisterScreen(),
+          settings: settings,
+        );
       case home:
         return MaterialPageRoute<void>(
           builder: (_) => const HomeScreen(),
+          settings: settings,
+        );
+      case profil:
+        return MaterialPageRoute<void>(
+          builder: (_) => const ProfilScreen(),
+          settings: settings,
+        );
+      case preferensiKosong:
+        return MaterialPageRoute<void>(
+          builder: (_) => const PreferensiKosongScreen(),
+          settings: settings,
+        );
+      case preferensiForm:
+        return MaterialPageRoute<void>(
+          builder: (_) => const PreferensiFormScreen(),
           settings: settings,
         );
       case detail:
