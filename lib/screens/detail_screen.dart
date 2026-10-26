@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../data/lamaran_repository.dart';
 import '../routes/app_routes.dart';
 import '../models/job.dart';
+import '../models/lamaran.dart';
 
 // Warna dari desain Figma
 const _bg = Color(0xFFF9F9FF);
@@ -30,9 +32,14 @@ class _DetailScreenState extends State<DetailScreen> {
 
   String? _catatan;
 
+  // FR-06: lamaran yang sudah dikirim untuk lowongan ini (null = belum melamar)
+  final _lamaranRepository = LamaranRepository();
+  Lamaran? _lamaran;
+
   @override
   void initState() {
     super.initState();
+    _lamaran = _lamaranRepository.findByJobId(widget.item.id);
     // Ambil catatan yang pernah disimpan untuk lowongan ini
     _catatan = _tersimpan[widget.item.id];
   }
@@ -47,7 +54,91 @@ class _DetailScreenState extends State<DetailScreen> {
     _tersimpan[item.id] = hasil;
     setState(() => _catatan = hasil);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lamaran dan catatan berhasil disimpan')),
+      const SnackBar(content: Text('Catatan berhasil disimpan')),
+    );
+  }
+
+  // FR-06: buka form lamaran, KIRIM Job, lalu TUNGGU Lamaran yang dikembalikan
+  Future<void> _bukaFormLamaran() async {
+    final hasil = await Navigator.pushNamed<Lamaran>(
+      context,
+      AppRoutes.lamaranForm,
+      arguments: item,
+    );
+    // null = pengguna kembali tanpa mengirim lamaran
+    if (!mounted || hasil == null) return;
+    setState(() => _lamaran = hasil);
+
+    // FEEDBACK: buka halaman "Lamaran Berhasil Dikirim" lalu TUNGGU hasilnya
+    final lihatStatus = await Navigator.pushNamed<bool>(
+      context,
+      AppRoutes.lamaranSukses,
+      arguments: hasil,
+    );
+    if (!mounted || lihatStatus != true) return;
+
+    // Tombol "Lihat Status Lamaran" ditekan -> buka halaman detail lamaran
+    await Navigator.pushNamed<String>(
+      context,
+      AppRoutes.lamaranDetail,
+      arguments: hasil,
+    );
+    if (!mounted) return;
+    // Lamaran bisa saja diedit/dibatalkan di sana -> segarkan kartu status
+    setState(() => _lamaran = _lamaranRepository.findByJobId(item.id));
+  }
+  Color _statusColor(LamaranStatus status) => switch (status) {
+        LamaranStatus.diproses => const Color(0xFFB45309),
+        LamaranStatus.diterima => _teal,
+        LamaranStatus.ditolak => const Color(0xFFBA1A1A),
+      };
+
+  // Kartu hasil yang DIKEMBALIKAN dari form lamaran
+  Widget _buildStatusLamaran() {
+    final l = _lamaran!;
+    final color = _statusColor(l.status);
+    return _Card(
+      border: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.assignment_turned_in_outlined,
+                  size: 20, color: _teal),
+              const SizedBox(width: 8),
+              const Expanded(child: _SectionTitle('Lamaran Terkirim')),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  l.status.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _InfoRow(label: 'ID Lamaran', value: l.id),
+          _InfoRow(label: 'Tanggal', value: l.tanggalLabel),
+          _InfoRow(label: 'Pelamar', value: l.namaPelamar),
+          _InfoRow(label: 'CV', value: '${l.cv.name} (${l.cv.sizeLabel})'),
+          if (l.dokumenTambahan != null)
+            _InfoRow(
+              label: 'Dok. tambahan',
+              value:
+                  '${l.dokumenTambahan!.name} (${l.dokumenTambahan!.sizeLabel})',
+            ),
+        ],
+      ),
     );
   }
   
@@ -120,6 +211,10 @@ class _DetailScreenState extends State<DetailScreen> {
         children: [
           _buildHero(),
           const SizedBox(height: 16),
+          if (_lamaran != null) ...[
+            _buildStatusLamaran(),
+            const SizedBox(height: 16),
+          ],
           if (item.benefits.isNotEmpty) ...[
             _buildBenefits(),
             const SizedBox(height: 16),
@@ -130,8 +225,6 @@ class _DetailScreenState extends State<DetailScreen> {
             _buildRequirements(),
             const SizedBox(height: 16),
           ],
-          _buildLocation(context),
-          const SizedBox(height: 16),
           _buildLocation(context),
           const SizedBox(height: 16),
           _buildCatatan(),
@@ -285,38 +378,59 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.55,
+          // Info ringkas 2x2. Tinggi mengikuti isi (IntrinsicHeight) supaya
+          // tidak overflow saat font/tampilan HP lebih besar.
+          Column(
             children: [
-              _MetaTile(
-                icon: Icons.payments_outlined,
-                iconColor: _blue,
-                label: 'Uang Saku',
-                value: item.allowance,
-                valueColor: _teal,
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _MetaTile(
+                        icon: Icons.payments_outlined,
+                        iconColor: _blue,
+                        label: 'Uang Saku',
+                        value: item.allowance,
+                        valueColor: _teal,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _MetaTile(
+                        icon: Icons.schedule,
+                        iconColor: _blueDark,
+                        label: 'Durasi',
+                        value: item.duration,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _MetaTile(
-                icon: Icons.schedule,
-                iconColor: _blueDark,
-                label: 'Durasi',
-                value: item.duration,
-              ),
-              _MetaTile(
-                icon: Icons.work_outline,
-                iconColor: _muted,
-                label: 'Tipe Kerja',
-                value: item.workType,
-              ),
-              _MetaTile(
-                icon: Icons.event_outlined,
-                iconColor: _muted,
-                label: 'Batas Lamar',
-                value: item.deadline,
+              const SizedBox(height: 10),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _MetaTile(
+                        icon: Icons.work_outline,
+                        iconColor: _muted,
+                        label: 'Tipe Kerja',
+                        value: item.workType,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _MetaTile(
+                        icon: Icons.event_outlined,
+                        iconColor: _muted,
+                        label: 'Batas Lamar',
+                        value: item.deadline,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -788,18 +902,22 @@ class _DetailScreenState extends State<DetailScreen> {
                 child: SizedBox(
                   height: 48,
                   child: FilledButton.icon(
-                    onPressed: () => _snack(context, 'Lamaran dikirim'),
+                    // sudah melamar -> tombol nonaktif
+                    onPressed: _lamaran == null ? _bukaFormLamaran : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: _blue,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.send, size: 14),
+                    icon: Icon(
+                      _lamaran == null ? Icons.send : Icons.check_circle,
+                      size: 14,
+                    ),
                     iconAlignment: IconAlignment.end,
-                    label: const Text(
-                      'Lamar Sekarang',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    label: Text(
+                      _lamaran == null ? 'Lamar Sekarang' : 'Lamaran Terkirim',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -837,6 +955,36 @@ class _Card extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(label,
+                style: const TextStyle(fontSize: 12, color: _muted)),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: _ink),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

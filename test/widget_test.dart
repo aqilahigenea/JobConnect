@@ -1,30 +1,73 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:job_connect/main.dart';
+import 'package:job_connect/data/lamaran_repository.dart';
+import 'package:job_connect/models/cv_document.dart';
+import 'package:job_connect/models/job.dart';
+import 'package:job_connect/models/lamaran.dart';
+import 'package:job_connect/utils/lamaran_validators.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('No. HP: valid dan tidak valid', () {
+    expect(LamaranValidators.noHp('081234567890'), isNull);
+    expect(LamaranValidators.noHp('12345'), isNotNull);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('Pesan opsional, tapi kalau diisi minimal 10 karakter', () {
+    expect(LamaranValidators.pesan(''), isNull);
+    expect(LamaranValidators.pesan('pendek'), isNotNull);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('FR-08: lamaran berstatus diproses dapat diubah', () async {
+    final repo = LamaranRepository();
+    const job = Job(
+      id: 'TEST-FR08',
+      title: 'Tester',
+      company: 'PT Uji',
+      location: 'Padang',
+      type: 'Magang',
+      description: '-',
+      salary: '-',
+      postedAgo: '-',
+      match: 0,
+    );
+    const cv = CvDocument(name: 'CV.pdf', sizeInBytes: 1000);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final dikirim = await repo.submit(
+      job: job,
+      namaPelamar: 'Budi',
+      email: 'budi@mail.com',
+      noHp: '081234567890',
+      pesan: '',
+      cv: cv,
+    );
+    final diubah = await repo.update(
+      id: dikirim.id,
+      namaPelamar: 'Budi Santoso',
+      email: dikirim.email,
+      noHp: dikirim.noHp,
+      pesan: dikirim.pesan,
+      cv: dikirim.cv,
+    );
+
+    // yang diedit berubah, yang tidak boleh berubah tetap sama
+    expect(diubah.namaPelamar, 'Budi Santoso');
+    expect(diubah.status, LamaranStatus.diproses);
+    expect(diubah.tanggalPengajuan, dikirim.tanggalPengajuan);
+    expect(repo.findById(dikirim.id)?.namaPelamar, 'Budi Santoso');
+  });
+
+  test('FR-08: id tidak ditemukan -> LamaranException', () async {
+    final repo = LamaranRepository();
+    const cv = CvDocument(name: 'CV.pdf', sizeInBytes: 1000);
+    expect(
+      () => repo.update(
+        id: 'TIDAK-ADA',
+        namaPelamar: 'Budi',
+        email: 'b@mail.com',
+        noHp: '081234567890',
+        pesan: '',
+        cv: cv,
+      ),
+      throwsA(isA<LamaranException>()),
+    );
   });
 }

@@ -721,18 +721,32 @@ class _BottomNav extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               for (var i = 0; i < _items.length; i++)
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(_items[i].$1,
-                        size: 22, color: i == 0 ? _C.primary : _C.textSec),
-                    const SizedBox(height: 2),
-                    Text(
-                      _items[i].$2,
-                      style: _inter(11, FontWeight.w600,
-                          i == 0 ? _C.primary : _C.textSec, spacing: 0.22),
+                InkWell(
+                  // FR-07: tab "Lamaran" (indeks 2) membuka daftar lamaran
+                  onTap: i == 2
+                      ? () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.lamaranList,
+                          )
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(_items[i].$1,
+                            size: 22,
+                            color: i == 0 ? _C.primary : _C.textSec),
+                        const SizedBox(height: 2),
+                        Text(
+                          _items[i].$2,
+                          style: _inter(11, FontWeight.w600,
+                              i == 0 ? _C.primary : _C.textSec,
+                              spacing: 0.22),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
             ],
           ),
