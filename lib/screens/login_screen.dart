@@ -137,28 +137,24 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             _buildNotice(),
             const SizedBox(height: AppSpacing.lg),
-            // (5) field + validator khusus Gmail & Email Mahasiswa
             _ValidatedField(
               validator: () {
                 final value = _idController.text.trim();
 
-                // 1. Cek apakah field kosong
                 final emptyError = Validators.requiredField(
                   value,
                   fieldName: 'Email/NIM',
                 );
                 if (emptyError != null) return emptyError;
 
-                // 2. Jika input berupa NIM (hanya angka)
                 final isNim = RegExp(r'^\d+$').hasMatch(value);
                 if (isNim) {
                   if (value.length < 8) {
                     return 'NIM minimal 8 digit angka';
                   }
-                  return null; // NIM valid
+                  return null;
                 }
 
-                // 3. Jika input berupa email, wajib menggunakan @gmail.com atau domain mahasiswa (.ac.id)
                 final isGmailOrCampus = RegExp(
                   r'^[\w\.-]+@(gmail\.com|[\w\.-]+\.ac\.id)$',
                   caseSensitive: false,
@@ -168,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   return 'Gunakan email @gmail.com atau email mahasiswa (.ac.id)';
                 }
 
-                return null; // Email valid
+                return null;
               },
               child: AppTextField(
                 label: 'Email Mahasiswa / NIM',

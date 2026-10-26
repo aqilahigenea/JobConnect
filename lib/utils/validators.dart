@@ -45,6 +45,7 @@ class Validators {
     if (number < 1 || number > 5) return 'Rating harus di antara 1 sampai 5';
     return null;
   }
+
   static String? pilihanMinimal(
     Set<String> terpilih, {
     required String namaField,
@@ -52,10 +53,10 @@ class Validators {
     int? max,
   }) {
     if (terpilih.length < min) {
-      return "Pilih minimal $min $namaField";
+      return 'Pilih minimal $min $namaField';
     }
     if (max != null && terpilih.length > max) {
-      return "Pilih maksimal $max $namaField";
+      return 'Pilih maksimal $max $namaField';
     }
     return null;
   }
