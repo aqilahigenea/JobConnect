@@ -195,12 +195,6 @@ class _LamaranDetailScreenState extends State<LamaranDetailScreen> {
         ],
       ),
       actions: [
-        IconButton(
-          tooltip: 'Bagikan',
-          icon: const Icon(Icons.share_outlined,
-              size: 20, color: AppColors.textSecondary),
-          onPressed: () => _snack('Fitur bagikan belum tersedia'),
-        ),
         PopupMenuButton<String>(
           tooltip: 'Pilihan lainnya',
           icon: const Icon(Icons.more_vert,

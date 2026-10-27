@@ -879,8 +879,6 @@ class _LamaranFormScreenState extends State<LamaranFormScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.chat_bubble_outline, size: 15, color: _slate500),
-              const SizedBox(width: 6),
               Text(
                 'Pesan untuk Recruiter',
                 style: _jakarta(14, FontWeight.w600, _ink),

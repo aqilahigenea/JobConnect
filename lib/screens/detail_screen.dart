@@ -73,18 +73,6 @@ class _DetailScreenState extends State<DetailScreen> {
           'Detail',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bookmark_border),
-            tooltip: 'Simpan lowongan',
-            onPressed: () => _snack(context, 'Lowongan disimpan'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Bagikan',
-            onPressed: () => _snack(context, 'Bagikan lowongan'),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -734,44 +722,23 @@ class _DetailScreenState extends State<DetailScreen> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Material(
-                color: _chip,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () => _snack(context, 'Tanya recruiter'),
-                  child: const SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Icon(Icons.chat_bubble_outline,
-                        size: 18, color: _ink),
-                  ),
-                ),
+          child: SizedBox(
+            height: 48,
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _lamarPekerjaan,
+              style: FilledButton.styleFrom(
+                backgroundColor: _blue,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 48,
-                  child: FilledButton.icon(
-                    onPressed: _lamarPekerjaan,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _blue,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    icon: const Icon(Icons.send, size: 14),
-                    iconAlignment: IconAlignment.end,
-                    label: const Text(
-                      'Lamar Sekarang',
-                      style:
-                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
+              icon: const Icon(Icons.send, size: 14),
+              iconAlignment: IconAlignment.end,
+              label: const Text(
+                'Lamar Sekarang',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -621,8 +621,6 @@ class _JobCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const Icon(Icons.bookmark_border,
-                        size: 20, color: _C.muted),
                   ],
                 ),
                 const SizedBox(height: 8),
