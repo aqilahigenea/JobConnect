@@ -47,6 +47,8 @@ class JobRepository {
       contactName: 'Tim Rekrutmen Teknologi Ranah',
       contactEmail: 'karier@teknologiranah.id',
       contactPhone: '+62 812 1111 2222',
+      latitude: -0.9165,
+      longitude: 100.4572,
     ),
     Job(
       id: '2',
@@ -84,10 +86,12 @@ class JobRepository {
         'Memiliki minimal satu proyek web.',
       ],
       officeName: 'Kantor Nagari Digital',
-      fullAddress: 'Jl. Contoh No. 10, Padang, Sumatera Barat',
+      fullAddress: 'Jl. Khatib Sulaiman No. 10, Padang, Sumatera Barat',
       contactName: 'HRD Nagari Digital',
       contactEmail: 'hrd@nagaridigital.id',
       contactPhone: '+62 811 2222 3333',
+      latitude: -0.9320,
+      longitude: 100.3650,
     ),
     Job(
       id: '3',
@@ -125,10 +129,12 @@ class JobRepository {
         'Komunikatif dan teliti.',
       ],
       officeName: 'Fore Coffee Padang',
-      fullAddress: 'Jl. Contoh No. 5, Padang, Sumatera Barat',
+      fullAddress: 'Jl. Raden Saleh No. 5, Padang, Sumatera Barat',
       contactName: 'Store Manager',
       contactEmail: 'padang@forecoffee.id',
       contactPhone: '+62 813 3333 4444',
+      latitude: -0.9275,
+      longitude: 100.3582,
     ),
     Job(
       id: '4',
@@ -158,10 +164,12 @@ class JobRepository {
         'Bisa mengoperasikan aplikasi kasir dasar.',
       ],
       officeName: 'Kopi Tuku Padang',
-      fullAddress: 'Jl. Contoh No. 8, Padang, Sumatera Barat',
+      fullAddress: 'Jl. Rasuna Said No. 8, Padang, Sumatera Barat',
       contactName: 'Manajer Toko',
       contactEmail: 'padang@kopituku.id',
       contactPhone: '+62 814 4444 5555',
+      latitude: -0.9350,
+      longitude: 100.3620,
     ),
     Job(
       id: '5',
@@ -197,10 +205,12 @@ class JobRepository {
         'Memiliki laptop dan koneksi internet stabil.',
       ],
       officeName: 'Kelas Online Ruangguru',
-      fullAddress: 'Pekerjaan dilakukan secara online.',
+      fullAddress: 'Pekerjaan online (HQ: Jl. Veteran No. 15, Padang)',
       contactName: 'Tim Tutor Ruangguru',
       contactEmail: 'tutor@ruangguru.example',
       contactPhone: '+62 815 5555 6666',
+      latitude: -0.9250,
+      longitude: 100.3670,
     ),
     Job(
       id: '6',
@@ -235,11 +245,13 @@ class JobRepository {
         'Mahasiswa aktif.',
         'Ramah dan tertarik pada dunia kecantikan.',
       ],
-      officeName: 'Sociolla Padang',
-      fullAddress: 'Jl. Contoh No. 12, Padang, Sumatera Barat',
+      officeName: 'Sociolla Padang (Basko Grand Mall)',
+      fullAddress: 'Jl. Prof. Dr. Hamka No. 12, Padang, Sumatera Barat',
       contactName: 'Store Supervisor',
       contactEmail: 'padang@sociolla.example',
       contactPhone: '+62 816 6666 7777',
+      latitude: -0.9380,
+      longitude: 100.3590,
     ),
   ];
 
@@ -251,4 +263,37 @@ class JobRepository {
     }
     return _jobs;
   }
-}
+
+  /// FR-01: Telusuri lowongan berdasarkan kata kunci pencarian dan filter jenis.
+  List<Job> filterJobs({
+    required List<Job> source,
+    String query = '',
+    String typeFilter = 'Semua',
+  }) {
+    final q = query.trim().toLowerCase();
+    return source.where((job) {
+      final matchesType =
+          typeFilter == 'Semua' || job.type.toLowerCase() == typeFilter.toLowerCase();
+      if (!matchesType) return false;
+      if (q.isEmpty) return true;
+
+      final inTitle = job.title.toLowerCase().contains(q);
+      final inCompany = job.company.toLowerCase().contains(q);
+      final inLocation = job.location.toLowerCase().contains(q);
+      final inType = job.type.toLowerCase().contains(q);
+      final inDesc = job.description.toLowerCase().contains(q);
+      final inRequirements =
+          job.requirements.any((r) => r.toLowerCase().contains(q));
+      final inResponsibilities =
+          job.responsibilities.any((r) => r.toLowerCase().contains(q));
+
+      return inTitle ||
+          inCompany ||
+          inLocation ||
+          inType ||
+          inDesc ||
+          inRequirements ||
+          inResponsibilities;
+    }).toList();
+  }
+}

@@ -65,16 +65,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Variabel state
   final _repository = JobRepository();
+  final _searchController = TextEditingController();
   ViewStatus _status = ViewStatus.loading;
   List<Job> _jobs = [];
   String _errorMessage = '';
   String _selectedFilter = 'Semua';
+  String _searchQuery = '';
   final bool _simulateError = false;
 
   @override
   void initState() {
     super.initState();
     _loadJobs();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   // Mengambil data + menangani error
@@ -99,8 +107,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Job> get _filteredJobs {
-    if (_selectedFilter == 'Semua') return _jobs;
-    return _jobs.where((j) => j.type == _selectedFilter).toList();
+    return _repository.filterJobs(
+      source: _jobs,
+      query: _searchQuery,
+      typeFilter: _selectedFilter,
+    );
   }
 
   void _openDetail(Job job) {
@@ -146,110 +157,240 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildList() {
     final jobs = _filteredJobs;
+    final isSearching = _searchQuery.trim().isNotEmpty;
+
     if (jobs.isEmpty) {
-      return EmptyView(
-        icon: Icons.work_off_outlined,
-        message: _jobs.isEmpty
-            ? 'Belum ada lowongan.'
-            : 'Belum ada lowongan untuk kategori "$_selectedFilter".',
+      if (isSearching) {
+        return RefreshIndicator(
+          onRefresh: _loadJobs,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+            children: [
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(
+                        color: _C.chip,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.search_off_rounded,
+                          size: 32, color: _C.muted),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Tidak ada lowongan ditemukan',
+                      style: _heading,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Tidak ada hasil yang cocok dengan "$_searchQuery"${_selectedFilter != 'Semua' ? ' pada filter $_selectedFilter' : ''}.\nCoba gunakan kata kunci atau filter lain.',
+                      style: _inter(12, FontWeight.w400, _C.textSec,
+                          height: 16 / 12),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                          _selectedFilter = 'Semua';
+                        });
+                      },
+                      icon: const Icon(Icons.refresh, size: 16, color: _C.primary),
+                      label: Text('Reset Pencarian',
+                          style: _inter(12, FontWeight.w600, _C.primary)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return RefreshIndicator(
+        onRefresh: _loadJobs,
+        child: ListView(
+          children: [
+            SizedBox(
+              height: 320,
+              child: EmptyView(
+                icon: Icons.work_off_outlined,
+                message: _jobs.isEmpty
+                    ? 'Belum ada lowongan.'
+                    : 'Belum ada lowongan untuk kategori "$_selectedFilter".',
+              ),
+            ),
+          ],
+        ),
       );
     }
+
+    if (isSearching) {
+      return RefreshIndicator(
+        onRefresh: _loadJobs,
+        child: ListView(
+          padding: const EdgeInsets.only(top: 16, bottom: 24),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Hasil Telusuri', style: _heading),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Hasil untuk "$_searchQuery"${_selectedFilter != 'Semua' ? ' ($_selectedFilter)' : ''}',
+                          style: _inter(12, FontWeight.w400, _C.textSec,
+                              height: 16 / 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDEE8FF),
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                    child: Text(
+                      '${jobs.length} Ditemukan',
+                      style:
+                          _inter(11, FontWeight.w500, _C.primary, spacing: 0.22),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  for (final job in jobs) ...[
+                    _JobCard(job: job, onTap: () => _openDetail(job)),
+                    const SizedBox(height: 16),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final preferred = ([...jobs]..sort((a, b) => b.match.compareTo(a.match)))
         .take(3)
         .toList();
 
-    return ListView(
-      padding: const EdgeInsets.only(top: 16, bottom: 24),
-      children: [
-        // --- Sesuai Preferensi ---
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Text('Sesuai Preferensi', style: _heading),
-                        SizedBox(width: 4),
-                        Icon(Icons.auto_awesome, size: 16, color: _C.primary),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Dipilih berdasarkan minat dan preferensi kariermu.',
-                      style: _inter(12, FontWeight.w400, _C.textSec,
-                          height: 16 / 12),
-                    ),
-                  ],
+    return RefreshIndicator(
+      onRefresh: _loadJobs,
+      child: ListView(
+        padding: const EdgeInsets.only(top: 16, bottom: 24),
+        children: [
+          // --- Sesuai Preferensi ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Text('Sesuai Preferensi', style: _heading),
+                          SizedBox(width: 4),
+                          Icon(Icons.auto_awesome, size: 16, color: _C.primary),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Dipilih berdasarkan minat dan preferensi kariermu.',
+                        style: _inter(12, FontWeight.w400, _C.textSec,
+                            height: 16 / 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              TextButton(
-                onPressed: () => setState(() => _selectedFilter = 'Semua'),
-                child: Row(
-                  children: [
-                    Text('Lihat Semua',
-                        style: _inter(12, FontWeight.w600, _C.primary)),
-                    const Icon(Icons.chevron_right,
-                        size: 16, color: _C.primary),
-                  ],
+                TextButton(
+                  onPressed: () => setState(() => _selectedFilter = 'Semua'),
+                  child: Row(
+                    children: [
+                      Text('Lihat Semua',
+                          style: _inter(12, FontWeight.w600, _C.primary)),
+                      const Icon(Icons.chevron_right,
+                          size: 16, color: _C.primary),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 194,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-            itemCount: preferred.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 16),
-            itemBuilder: (context, i) => _PreferenceCard(
-              job: preferred[i],
-              onTap: () => _openDetail(preferred[i]),
+              ],
             ),
           ),
-        ),
-        // --- Lowongan Terbaru ---
-        const SizedBox(height: 24),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Lowongan Terbaru', style: _heading),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDEE8FF),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-                child: Text(
-                  '${jobs.length} Lowongan Baru',
-                  style: _inter(11, FontWeight.w500, _C.primary, spacing: 0.22),
-                ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              itemCount: preferred.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 16),
+              itemBuilder: (context, i) => _PreferenceCard(
+                job: preferred[i],
+                onTap: () => _openDetail(preferred[i]),
               ),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
-              for (final job in jobs) ...[
-                _JobCard(job: job, onTap: () => _openDetail(job)),
-                const SizedBox(height: 16),
+          // --- Lowongan Terbaru ---
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Lowongan Terbaru', style: _heading),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDEE8FF),
+                    borderRadius: BorderRadius.circular(9999),
+                  ),
+                  child: Text(
+                    '${jobs.length} Lowongan Baru',
+                    style: _inter(11, FontWeight.w500, _C.primary, spacing: 0.22),
+                  ),
+                ),
               ],
-            ],
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                for (final job in jobs) ...[
+                  _JobCard(job: job, onTap: () => _openDetail(job)),
+                  const SizedBox(height: 16),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -352,23 +493,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget Search Bar (sudah disesuaikan memanjang ke kanan)
+  // Widget Search Bar (FR-01: Fitur Telusuri Lowongan)
   Widget _buildSearch() {
+    final hasQuery = _searchQuery.isNotEmpty;
     return Container(
       color: _C.surface,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: SizedBox(
         height: 48,
         child: TextField(
+          controller: _searchController,
+          onChanged: (val) {
+            setState(() {
+              _searchQuery = val;
+            });
+          },
+          textInputAction: TextInputAction.search,
           style: _inter(14, FontWeight.w400, _C.text),
           decoration: InputDecoration(
             hintText: 'Cari lowongan kerja...',
             hintStyle: _inter(14, FontWeight.w400, _C.muted),
             prefixIcon:
-                const Icon(Icons.search, size: 18, color: _C.muted),
+                const Icon(Icons.search, size: 20, color: _C.muted),
+            suffixIcon: hasQuery
+                ? IconButton(
+                    icon: const Icon(Icons.close, size: 18, color: _C.muted),
+                    tooltip: 'Hapus pencarian',
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  )
+                : null,
             filled: true,
             fillColor: _C.chip,
-            contentPadding: EdgeInsets.zero,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -379,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _C.primary),
+              borderSide: const BorderSide(color: _C.primary, width: 1.5),
             ),
           ),
         ),
@@ -543,10 +704,11 @@ class _PreferenceCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: _heading),
-                Row(
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     _Tag(job.type, bg: _C.tagBlue, fg: _C.primary),
-                    const SizedBox(width: 4),
                     _Tag(job.postedAgo, bg: _C.chip, fg: _C.textSec),
                   ],
                 ),

@@ -30,6 +30,8 @@ class Job {
   final String contactName;
   final String contactEmail;
   final String contactPhone;
+  final double latitude;
+  final double longitude;
 
   const Job({
     required this.id,
@@ -53,6 +55,8 @@ class Job {
     this.contactName = '-',
     this.contactEmail = '-',
     this.contactPhone = '-',
+    this.latitude = -0.9471,
+    this.longitude = 100.4172,
   });
 
   String get subtitle => '$company • $location';

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/job.dart';
 import '../models/lamaran.dart';
 import '../routes/app_routes.dart';
@@ -51,12 +54,6 @@ class _DetailScreenState extends State<DetailScreen> {
         arguments: lamaran,
       );
     }
-  }
-  
-  void _snack(BuildContext context, String msg) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -545,91 +542,8 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          // Pratinjau peta (placeholder, tanpa gambar eksternal)
-          Container(
-            height: 144,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0x66C3C6D7)),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFDCE6FB), Color(0xFFEAF1FF)],
-              ),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: _blue.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _blue,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const Icon(Icons.location_on,
-                      size: 16, color: Colors.white),
-                ),
-                Positioned(
-                  left: 9,
-                  bottom: 9,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _bg.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.circle, size: 8, color: Color(0xFF10B981)),
-                        SizedBox(width: 6),
-                        Text(
-                          'Lokasi kantor',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: _ink,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 40,
-            child: OutlinedButton.icon(
-              onPressed: () => _snack(context, 'Buka di Google Maps'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _blue,
-                backgroundColor: _blue.withValues(alpha: 0.05),
-                side: BorderSide(color: _blue.withValues(alpha: 0.2)),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.map_outlined, size: 14),
-              label: const Text(
-                'Buka di Google Maps',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
+          // Pratinjau peta interaktif (FR-04: Sistem menampilkan lokasi kerja pada peta)
+          _InteractiveLocationMap(item: item),
         ],
       ),
     );
@@ -881,6 +795,490 @@ class _MetaTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Widget Peta Interaktif Lokasi Kerja (FR-04)
+class _InteractiveLocationMap extends StatefulWidget {
+  final Job item;
+
+  const _InteractiveLocationMap({required this.item});
+
+  @override
+  State<_InteractiveLocationMap> createState() =>
+      _InteractiveLocationMapState();
+}
+
+class _InteractiveLocationMapState extends State<_InteractiveLocationMap> {
+  late final MapController _mapController;
+  bool _showTooltip = true;
+  double _currentZoom = 15.0;
+
+  static const _campusCoords = LatLng(-0.9146, 100.4586); // Kampus Unand Limau Manis
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  LatLng get _targetCoords =>
+      LatLng(widget.item.latitude, widget.item.longitude);
+
+  String get _distanceFromCampus {
+    final meters =
+        const Distance().as(LengthUnit.Meter, _campusCoords, _targetCoords);
+    if (meters < 1000) {
+      return '± ${(meters).round()} m dari Kampus Unand';
+    }
+    final km = meters / 1000.0;
+    return '± ${km.toStringAsFixed(1)} km dari Kampus Unand';
+  }
+
+  void _zoomIn() {
+    _currentZoom = (_currentZoom + 1).clamp(4.0, 18.0);
+    _mapController.move(_targetCoords, _currentZoom);
+  }
+
+  void _zoomOut() {
+    _currentZoom = (_currentZoom - 1).clamp(4.0, 18.0);
+    _mapController.move(_targetCoords, _currentZoom);
+  }
+
+  void _recenter() {
+    _currentZoom = 15.0;
+    _mapController.move(_targetCoords, 15.0);
+  }
+
+  Future<void> _openGoogleMaps() async {
+    final lat = widget.item.latitude;
+    final lng = widget.item.longitude;
+    final Uri uri = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        await launchUrl(uri);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Membuka koordinat: $lat, $lng',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _openFullScreenMap() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog.fullscreen(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text(
+              widget.item.locationName,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            backgroundColor: Colors.white,
+            foregroundColor: _ink,
+            elevation: 0.5,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.open_in_new, size: 20),
+                tooltip: 'Buka di Google Maps',
+                onPressed: _openGoogleMaps,
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: _targetCoords,
+                  initialZoom: 15.5,
+                  minZoom: 4.0,
+                  maxZoom: 19.0,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'id.ac.jobconnect.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _targetCoords,
+                        width: 160,
+                        height: 90,
+                        alignment: Alignment.topCenter,
+                        child: _buildPinWidget(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Positioned(
+                bottom: 24,
+                left: 16,
+                right: 16,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: _blue.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.place, color: _blue, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.item.locationName,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: _ink,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              widget.item.address,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: _muted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(
+                        onPressed: _openGoogleMaps,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        child: const Text('Rute', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPinWidget() {
+    return GestureDetector(
+      onTap: () => setState(() => _showTooltip = !_showTooltip),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_showTooltip)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _ink,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.item.company,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    widget.item.locationName,
+                    style: const TextStyle(
+                      color: Color(0xFF89F5E7),
+                      fontSize: 9,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 2),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: _blue.withValues(alpha: 0.25),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.location_on,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _mapButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.95),
+      borderRadius: BorderRadius.circular(8),
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, size: 18, color: _ink),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Container Peta Interaktif
+        Container(
+          height: 210,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0x66C3C6D7)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _targetCoords,
+                  initialZoom: _currentZoom,
+                  minZoom: 4.0,
+                  maxZoom: 18.0,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.all,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'id.ac.jobconnect.app',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _targetCoords,
+                        width: 140,
+                        height: 90,
+                        alignment: Alignment.topCenter,
+                        child: _buildPinWidget(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Tombol Kontrol Peta (Zoom & Recenter) di Kanan Atas
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Column(
+                  children: [
+                    _mapButton(
+                      icon: Icons.add,
+                      tooltip: 'Perbesar',
+                      onTap: _zoomIn,
+                    ),
+                    const SizedBox(height: 6),
+                    _mapButton(
+                      icon: Icons.remove,
+                      tooltip: 'Perkecil',
+                      onTap: _zoomOut,
+                    ),
+                    const SizedBox(height: 6),
+                    _mapButton(
+                      icon: Icons.my_location,
+                      tooltip: 'Pusatkan ke lokasi',
+                      onTap: _recenter,
+                    ),
+                  ],
+                ),
+              ),
+              // Badge Jarak Kampus di Kiri Bawah
+              Positioned(
+                left: 8,
+                bottom: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.near_me, size: 11, color: _blue),
+                      const SizedBox(width: 4),
+                      Text(
+                        _distanceFromCampus,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Tombol Buka Peta Penuh di Kanan Bawah
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: Material(
+                  color: Colors.white.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(6),
+                  elevation: 1,
+                  child: InkWell(
+                    onTap: _openFullScreenMap,
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fullscreen, size: 14, color: _ink),
+                          SizedBox(width: 2),
+                          Text(
+                            'Penuh',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _ink,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Tombol Buka di Google Maps
+        SizedBox(
+          width: double.infinity,
+          height: 42,
+          child: OutlinedButton.icon(
+            onPressed: _openGoogleMaps,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _blue,
+              backgroundColor: _blue.withValues(alpha: 0.05),
+              side: BorderSide(color: _blue.withValues(alpha: 0.2)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.map_outlined, size: 16),
+            label: const Text(
+              'Buka di Google Maps',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
