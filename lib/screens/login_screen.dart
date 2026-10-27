@@ -6,7 +6,6 @@ import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
 import '../utils/validators.dart';
-import '../widgets/alt_auth_button.dart';
 import '../widgets/app_text_field.dart';
 import '../widgets/auth_tab_switcher.dart';
 import '../widgets/login_header.dart';
@@ -206,24 +205,6 @@ class _LoginScreenState extends State<LoginScreen> {
               trailingIcon: Icons.arrow_forward,
               onPressed: _onLoginPressed,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            _buildDivider(),
-            const SizedBox(height: AppSpacing.lg),
-            AltAuthButton(
-              label: 'Masuk dengan SSO Kampus',
-              icon: const Icon(
-                Icons.account_balance,
-                size: 18,
-                color: AppColors.primary,
-              ),
-              onPressed: () {},
-            ),
-            const SizedBox(height: 10),
-            AltAuthButton(
-              label: 'Google',
-              icon: const _GoogleMark(),
-              onPressed: () {},
-            ),
           ],
         ),
       ),
@@ -286,23 +267,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        const Expanded(
-          child: Divider(height: 1, thickness: 1, color: AppColors.divider),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          child: Text('atau masuk dengan', style: AppTextStyles.dividerText),
-        ),
-        const Expanded(
-          child: Divider(height: 1, thickness: 1, color: AppColors.divider),
-        ),
-      ],
-    );
-  }
-
   Widget _buildRegisterLink() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -348,23 +312,6 @@ class _ValidatedField extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-}
-
-/// Pengganti sementara logo Google. Ganti dengan Image.asset(...) hasil ekspor Figma.
-class _GoogleMark extends StatelessWidget {
-  const _GoogleMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Text(
-      'G',
-      style: TextStyle(
-        color: Color(0xFF4285F4),
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
-      ),
     );
   }
 }

@@ -26,32 +26,6 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   Job get item => widget.item;
 
-  // Penyimpanan sementara di memori: id lowongan -> catatan
-  static final Map<String, String> _tersimpan = {};
-
-  String? _catatan;
-
-  @override
-  void initState() {
-    super.initState();
-    // Ambil catatan yang pernah disimpan untuk lowongan ini
-    _catatan = _tersimpan[widget.item.id];
-  }
-
-  Future<void> _bukaFormCatatan() async {
-    final hasil = await Navigator.pushNamed<String>(
-      context,
-      AppRoutes.catatanForm,
-      arguments: item,
-    );
-    if (!mounted || hasil == null) return; // null = pengguna batal
-    _tersimpan[item.id] = hasil;
-    setState(() => _catatan = hasil);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Lamaran dan catatan berhasil disimpan')),
-    );
-  }
-
   Future<void> _lamarPekerjaan() async {
     // 1. Buka form pengajuan lamaran
     final lamaran = await Navigator.pushNamed<Lamaran>(
@@ -85,37 +59,6 @@ class _DetailScreenState extends State<DetailScreen> {
       ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // Bagian catatan yang tampil di halaman Detail
-  Widget _buildCatatan() {
-    return _Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.edit_note, size: 20, color: _blue),
-              SizedBox(width: 8),
-              _SectionTitle('Catatan Saya'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _catatan ?? 'Belum ada catatan.',
-            style: const TextStyle(fontSize: 14, height: 1.5, color: _muted),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _bukaFormCatatan,
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Tulis Catatan'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,8 +102,6 @@ class _DetailScreenState extends State<DetailScreen> {
             const SizedBox(height: 16),
           ],
           _buildLocation(context),
-          const SizedBox(height: 16),
-          _buildCatatan(),
           const SizedBox(height: 16),
           _buildContact(),
         ],

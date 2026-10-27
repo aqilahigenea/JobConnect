@@ -6,7 +6,7 @@ import '../models/job.dart';
 import '../routes/app_routes.dart';
 import '../widgets/state_views.dart';
 
-// (1) status tampilan
+// (1) Status tampilan
 enum ViewStatus { loading, success, error }
 
 /// Warna & gaya teks dari Figma (khusus halaman Home).
@@ -63,22 +63,21 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   static const _filters = ['Semua', 'Magang', 'Paruh Waktu', 'Freelance'];
 
-  // (2) variabel state
+  // Variabel state
   final _repository = JobRepository();
   ViewStatus _status = ViewStatus.loading;
   List<Job> _jobs = [];
   String _errorMessage = '';
   String _selectedFilter = 'Semua';
-  final bool _simulateError = false; // ubah ke true untuk menguji error state
+  final bool _simulateError = false;
 
-  // (3) ambil data saat layar pertama kali dibuka
   @override
   void initState() {
     super.initState();
     _loadJobs();
   }
 
-  // (4) mengambil data + menangani error
+  // Mengambil data + menangani error
   Future<void> _loadJobs() async {
     if (_status != ViewStatus.loading) {
       setState(() => _status = ViewStatus.loading);
@@ -104,7 +103,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return _jobs.where((j) => j.type == _selectedFilter).toList();
   }
 
-  // (7) kirim Job yang dipilih ke layar Detail
   void _openDetail(Job job) {
     Navigator.pushNamed(
       context,
@@ -127,18 +125,17 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildTopBar(),
             _buildSearch(),
             _buildChips(),
-            Expanded(child: _buildContent()), // (5)
+            Expanded(child: _buildContent()),
           ],
         ),
       ),
       bottomNavigationBar: _BottomNav(
         onProfileTap: _openProfile,
-        onExploreTap: () => setState(() => _selectedFilter = 'Semua'),
       ),
     );
   }
 
-  // (6) memilih tampilan: loading / error / sukses
+  // Memilih tampilan: loading / error / sukses
   Widget _buildContent() {
     return switch (_status) {
       ViewStatus.loading => const LoadingView(message: 'Memuat lowongan...'),
@@ -355,52 +352,37 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Widget Search Bar (sudah disesuaikan memanjang ke kanan)
   Widget _buildSearch() {
     return Container(
       color: _C.surface,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Row(
-        children: [
-          Expanded(
-            child: SizedBox(
-              height: 48,
-              child: TextField(
-                style: _inter(14, FontWeight.w400, _C.text),
-                decoration: InputDecoration(
-                  hintText: 'Cari lowongan kerja...',
-                  hintStyle: _inter(14, FontWeight.w400, _C.muted),
-                  prefixIcon:
-                      const Icon(Icons.search, size: 18, color: _C.muted),
-                  filled: true,
-                  fillColor: _C.chip,
-                  contentPadding: EdgeInsets.zero,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _C.primary),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: _C.primary,
+      child: SizedBox(
+        height: 48,
+        child: TextField(
+          style: _inter(14, FontWeight.w400, _C.text),
+          decoration: InputDecoration(
+            hintText: 'Cari lowongan kerja...',
+            hintStyle: _inter(14, FontWeight.w400, _C.muted),
+            prefixIcon:
+                const Icon(Icons.search, size: 18, color: _C.muted),
+            filled: true,
+            fillColor: _C.chip,
+            contentPadding: EdgeInsets.zero,
+            border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
-            child: const Icon(Icons.tune, size: 20, color: Colors.white),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: _C.primary),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -710,21 +692,17 @@ class _JobCard extends StatelessWidget {
   }
 }
 
-/// Navigasi bawah dengan aksi tab.
+/// Navigasi bawah (3 menu).
 class _BottomNav extends StatelessWidget {
   final VoidCallback? onProfileTap;
-  final VoidCallback? onExploreTap;
 
   const _BottomNav({
     this.onProfileTap,
-    this.onExploreTap,
   });
 
   static const _items = [
     (Icons.home_filled, 'Beranda'),
-    (Icons.explore_outlined, 'Jelajah'),
     (Icons.description_outlined, 'Lamaran'),
-    (Icons.tune, 'Preferensi'),
     (Icons.person_outline, 'Profil'),
   ];
 
@@ -753,12 +731,8 @@ class _BottomNav extends StatelessWidget {
                   onTap: () {
                     switch (i) {
                       case 1:
-                        onExploreTap?.call();
-                      case 2:
                         Navigator.pushNamed(context, AppRoutes.lamaranList);
-                      case 3:
-                        Navigator.pushNamed(context, AppRoutes.profil);
-                      case 4:
+                      case 2:
                         onProfileTap?.call();
                       default:
                         break;

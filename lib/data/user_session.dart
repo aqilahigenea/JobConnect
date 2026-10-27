@@ -1,58 +1,71 @@
-/// Mengelola sesi pengguna yang sedang login (nama & email).
 class UserSession {
+  // Singleton pattern
   static final UserSession _instance = UserSession._internal();
   factory UserSession() => _instance;
   UserSession._internal();
 
-  String? email;
-  String? name;
+  String? _currentUser;
+  String? _fullName;
 
-  // Catatan user yang mendaftar di RegisterScreen: email -> nama lengkap
-  final Map<String, String> _registeredUsers = {};
-
+  /// Dipanggil saat registrasi pengguna baru
   void registerUser({required String name, required String email}) {
-    _registeredUsers[email.trim().toLowerCase()] = name.trim();
+    _fullName = name;
+    _currentUser = email;
   }
 
-  void login(String inputEmail) {
-    email = inputEmail.trim();
-    final lower = email!.toLowerCase();
-    if (_registeredUsers.containsKey(lower)) {
-      name = _registeredUsers[lower];
-    } else {
-      // Ambil bagian sebelum @ sebagai nama
-      final username = email!.split('@').first;
-      final formatted = username
-          .replaceAll(RegExp(r'[._\d]'), ' ')
-          .trim()
-          .split(RegExp(r'\s+'))
-          .where((w) => w.isNotEmpty)
-          .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
-          .join(' ');
-      name = formatted.isNotEmpty ? formatted : 'Aqila';
+  /// Dipanggil saat login dengan email/NIM
+  void login(String identifier) {
+    _currentUser = identifier;
+    // Jika nama lengkap belum pernah diisi (misal langsung login), 
+    // gunakan nama depan dari email/NIM sebagai nama lengkap default
+    if (_fullName == null || _fullName!.isEmpty) {
+      _fullName = displayName;
     }
   }
 
-  /// Nama panggilan singkat untuk sapaan "Halo, `displayName` 👋"
-  String get displayName {
-    if (name != null && name!.trim().isNotEmpty) {
-      final first = name!.trim().split(' ').first;
-      return first.isNotEmpty ? first : name!;
-    }
-    return 'Aqila';
-  }
-
-  /// Nama lengkap untuk tampilan Profil
-  String get fullName => (name != null && name!.isNotEmpty) ? name! : 'Madani Fitri Nur Hidayati';
-
-  /// Inisial avatar (misal 'M' untuk Madani)
-  String get displayInitial {
-    final d = displayName;
-    return d.isNotEmpty ? d[0].toUpperCase() : 'A';
-  }
-
+  /// Dipanggil saat logout
   void logout() {
-    email = null;
-    name = null;
+    _currentUser = null;
+    _fullName = null;
+  }
+
+  /// Getter untuk nama lengkap (memperbaiki error 'fullName')
+  String get fullName {
+    if (_fullName != null && _fullName!.isNotEmpty) {
+      return _fullName!;
+    }
+    return displayName;
+  }
+
+  /// Mengambil nama tampilan secara otomatis dari email/NIM
+  String get displayName {
+    if (_currentUser == null || _currentUser!.isEmpty) {
+      return 'Pengguna';
+    }
+
+    final input = _currentUser!.trim();
+
+    // 1. Jika input berupa email (contoh: madani@gmail.com)
+    if (input.contains('@')) {
+      final namePart = input.split('@').first;
+      if (namePart.isEmpty) return 'Pengguna';
+      return namePart[0].toUpperCase() + namePart.substring(1);
+    }
+
+    // 2. Jika input berupa NIM/angka (contoh: 2411521005)
+    final isNim = RegExp(r'^\d+$').hasMatch(input);
+    if (isNim) {
+      return 'Mahasiswa ($input)';
+    }
+
+    // 3. Jika input berupa teks nama biasa
+    return input[0].toUpperCase() + input.substring(1);
+  }
+
+  /// Mengambil inisial huruf depan untuk Avatar di AppBar
+  String get displayInitial {
+    final name = fullName;
+    if (name.isEmpty) return 'U';
+    return name[0].toUpperCase();
   }
 }

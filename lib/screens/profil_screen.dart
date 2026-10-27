@@ -46,6 +46,35 @@ class _ProfilScreenState extends State<ProfilScreen> {
     _muatData();
   }
 
+  Future<void> _logout() async {
+    final yakin = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text('Apakah kamu yakin ingin logout dari JobConnect?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.logout, size: 18),
+            label: const Text('Logout'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (yakin != true || !mounted) return;
+
+    // Kembali ke route awal (LoginScreen) dan hapus riwayat navigasi sebelumnya.
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+  }
+
   Future<void> _hapusPreferensi() async {
     final yakin = await showDialog<bool>(
       context: context,
@@ -104,6 +133,17 @@ class _ProfilScreenState extends State<ProfilScreen> {
             color: const Color(0xFF0F172A),
           ),
         ),
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            tooltip: 'Logout',
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: Color(0xFFDC2626),
+            ),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
