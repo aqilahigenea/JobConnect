@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../data/job_repository.dart';
+import '../data/lowongan_dilihat_repository.dart';
+import '../data/notifikasi_repository.dart';
 import '../data/user_session.dart';
 import '../models/job.dart';
+import '../models/notifikasi.dart';
 import '../routes/app_routes.dart';
 import '../widgets/state_views.dart';
 
@@ -72,15 +76,35 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedFilter = 'Semua';
   String _searchQuery = '';
   final bool _simulateError = false;
+  StreamSubscription<NotifikasiItem>? _notifSub;
+  NotifikasiItem? _activeBannerNotif;
 
   @override
   void initState() {
     super.initState();
     _loadJobs();
+    _listenToNotifications();
+  }
+
+  void _listenToNotifications() {
+    _notifSub = NotifikasiRepository().onNotifikasiBaru.listen((notif) {
+      if (!mounted) return;
+      setState(() {
+        _activeBannerNotif = notif;
+      });
+      Future.delayed(const Duration(seconds: 6), () {
+        if (mounted && _activeBannerNotif?.id == notif.id) {
+          setState(() {
+            _activeBannerNotif = null;
+          });
+        }
+      });
+    });
   }
 
   @override
   void dispose() {
+    _notifSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -97,6 +121,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _jobs = jobs;
         _status = ViewStatus.success;
       });
+
+      // FR-05: Evaluasi pengingat batas akhir untuk lowongan yang pernah dilihat pengguna
+      NotifikasiRepository().periksaPengingatBatasAkhir(
+        userId: UserSession().currentUserId,
+        semuaLowongan: jobs,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -126,6 +156,21 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.pushNamed(context, AppRoutes.profil);
   }
 
+  /// FR-05: Mengetuk notifikasi membuka halaman detail lowongan tersebut.
+  void _openNotifikasiTarget(NotifikasiItem notif) {
+    NotifikasiRepository().tandaiDibaca(notif.id);
+    if (_activeBannerNotif?.id == notif.id) {
+      setState(() => _activeBannerNotif = null);
+    }
+
+    if (notif.jenis == JenisNotifikasi.pengingatBatasAkhir) {
+      final job = _repository.findById(notif.idTujuan);
+      if (job != null) {
+        _openDetail(job);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -134,6 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             _buildTopBar(),
+            if (_activeBannerNotif != null) _buildInAppNotificationBanner(),
             _buildSearch(),
             _buildChips(),
             Expanded(child: _buildContent()),
@@ -455,40 +501,443 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+          ValueListenableBuilder<List<NotifikasiItem>>(
+            valueListenable: NotifikasiRepository().notifikasiNotifier,
+            builder: (context, _, __) {
+              final unreadCount = NotifikasiRepository()
+                  .getUnreadCount(UserSession().currentUserId);
+              return InkWell(
+                onTap: () => _showNotificationSheet(context),
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: unreadCount > 0
+                            ? const Color(0xFFDEE8FF)
+                            : _C.chip,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        unreadCount > 0
+                            ? Icons.notifications_active
+                            : Icons.notifications_none,
+                        size: 22,
+                        color: unreadCount > 0 ? _C.primary : _C.text,
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          constraints: const BoxConstraints(
+                              minWidth: 18, minHeight: 18),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: _C.red,
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(color: _C.surface, width: 2),
+                          ),
+                          child: Text(
+                            '$unreadCount',
+                            style: _inter(10, FontWeight.w700, Colors.white),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget In-App Notification Banner (FR-05)
+  Widget _buildInAppNotificationBanner() {
+    final notif = _activeBannerNotif;
+    if (notif == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFB74D), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1FDD6B20),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF9800),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.alarm,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              onTap: () => _openNotifikasiTarget(notif),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notif.judul,
+                          style: _inter(
+                              13, FontWeight.w700, const Color(0xFFC05621)),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDD6B20),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '< 24 Jam',
+                          style: _inter(9, FontWeight.w700, Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notif.pesan,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        _inter(11, FontWeight.w400, const Color(0xFF7B341E)),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        'Ketuk untuk melihat detail lowongan →',
+                        style: _inter(11, FontWeight.w600, _C.primary),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
           InkWell(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.lamaranList),
-            borderRadius: BorderRadius.circular(12),
-            child: Stack(
+            onTap: () => setState(() => _activeBannerNotif = null),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close, size: 16, color: Color(0xFF9C4221)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Modal Notification Center (FR-05, FR-10, FR-15)
+  void _showNotificationSheet(BuildContext context) {
+    final userId = UserSession().currentUserId;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final notifs = NotifikasiRepository().getNotifikasi(userId);
+            final unread = NotifikasiRepository().getUnreadCount(userId);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: _C.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle bar
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _C.chip,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Text('Notifikasi', style: _heading),
+                            if (unread > 0) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _C.red,
+                                  borderRadius: BorderRadius.circular(99),
+                                ),
+                                child: Text(
+                                  '$unread Baru',
+                                  style: _inter(
+                                      10, FontWeight.w700, Colors.white),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (notifs.isNotEmpty)
+                          TextButton(
+                            onPressed: () {
+                              NotifikasiRepository().tandaiSemuaDibaca(userId);
+                              setSheetState(() {});
+                              setState(() {});
+                            },
+                            child: Text(
+                              'Tandai dibaca',
+                              style: _inter(12, FontWeight.w600, _C.primary),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 1, color: _C.chip),
+
+                  // Daftar notifikasi
+                  Expanded(
+                    child: notifs.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: const BoxDecoration(
+                                      color: _C.chip,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_none_outlined,
+                                      size: 32,
+                                      color: _C.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  const Text(
+                                    'Belum Ada Notifikasi',
+                                    style: _heading,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Notifikasi pengingat batas akhir lowongan (FR-05) dan pembaruan akan muncul di sini.',
+                                    textAlign: TextAlign.center,
+                                    style:
+                                        _inter(12, FontWeight.w400, _C.textSec),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  OutlinedButton.icon(
+                                    onPressed: () {
+                                      // Simulasi pengingat batas akhir FR-05
+                                      final sampleJob = _jobs.isNotEmpty
+                                          ? _jobs.firstWhere(
+                                              (j) => j.id == '4',
+                                              orElse: () => _jobs.first,
+                                            )
+                                          : null;
+                                      if (sampleJob != null) {
+                                        NotifikasiRepository()
+                                            .simulasiPengingatBatasAkhir(
+                                          userId: userId,
+                                          job: sampleJob,
+                                          sisaJam: 18,
+                                        );
+                                        setSheetState(() {});
+                                        setState(() {});
+                                      }
+                                    },
+                                    icon: const Icon(Icons.flash_on, size: 16),
+                                    label: const Text(
+                                        'Simulasi Pengingat (FR-05)'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            itemCount: notifs.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (ctx, i) {
+                              final item = notifs[i];
+                              return _buildNotificationCard(item, () {
+                                Navigator.pop(ctx);
+                                _openNotifikasiTarget(item);
+                              });
+                            },
+                          ),
+                  ),
+
+                  // Bottom action bar
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                    decoration: const BoxDecoration(
+                      color: _C.chip,
+                      borderRadius:
+                          BorderRadius.vertical(bottom: Radius.circular(24)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            size: 16, color: _C.muted),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'FR-05: Mengetuk notifikasi langsung membuka halaman detail lowongan.',
+                            style: _inter(11, FontWeight.w400, _C.textSec),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationCard(NotifikasiItem item, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: item.isRead ? _C.surface : const Color(0xFFF4F7FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: item.isRead ? _C.chip : const Color(0xFFBFDBFE),
+          width: 1.2,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: _C.chip,
-                    borderRadius: BorderRadius.circular(12),
+                    color: item.jenis == JenisNotifikasi.pengingatBatasAkhir
+                        ? const Color(0xFFFFF3E0)
+                        : const Color(0xFFE0F2FE),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.notifications_none,
-                      size: 22, color: _C.text),
+                  child: Icon(
+                    item.jenis == JenisNotifikasi.pengingatBatasAkhir
+                        ? Icons.alarm
+                        : Icons.work_outline,
+                    color: item.jenis == JenisNotifikasi.pengingatBatasAkhir
+                        ? const Color(0xFFE65100)
+                        : _C.primary,
+                    size: 20,
+                  ),
                 ),
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: _C.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text('3',
-                        style: _inter(10, FontWeight.w700, Colors.white)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.judul,
+                              style: _inter(
+                                13,
+                                item.isRead ? FontWeight.w600 : FontWeight.w700,
+                                _C.text,
+                              ),
+                            ),
+                          ),
+                          if (!item.isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: _C.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.pesan,
+                        style: _inter(12, FontWeight.w400, _C.textSec),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Buka detail lowongan →',
+                            style: _inter(11, FontWeight.w600, _C.primary),
+                          ),
+                          Text(
+                            '${item.waktu.hour.toString().padLeft(2, '0')}:${item.waktu.minute.toString().padLeft(2, '0')}',
+                            style: _inter(10, FontWeight.w400, _C.muted),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

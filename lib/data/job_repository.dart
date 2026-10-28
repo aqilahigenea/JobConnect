@@ -2,7 +2,7 @@ import '../models/job.dart';
 
 /// Sumber data sementara (dummy). Nanti bisa diganti API/database.
 class JobRepository {
-  static const List<Job> _jobs = [
+  static List<Job> get _jobs => [
     Job(
       id: '1',
       title: 'UI/UX Designer Intern',
@@ -148,7 +148,8 @@ class JobRepository {
       match: 76,
       teamName: 'Store Operations',
       duration: '4 bulan',
-      deadline: '20 Des 2026',
+      deadline: 'Besok, 18:00 (Sisa 18 Jam)',
+      deadlineDate: DateTime.now().add(const Duration(hours: 18)),
       benefits: [
         Benefit(
           title: 'Gaji bulanan',
@@ -262,6 +263,14 @@ class JobRepository {
       throw Exception('Gagal memuat data. Periksa koneksi internet.');
     }
     return _jobs;
+  }
+
+  /// FR-05: Ambil detail lowongan berdasarkan ID (digunakan saat notifikasi diketuk).
+  Job? findById(String id) {
+    for (final j in _jobs) {
+      if (j.id == id) return j;
+    }
+    return null;
   }
 
   /// FR-01: Telusuri lowongan berdasarkan kata kunci pencarian dan filter jenis.

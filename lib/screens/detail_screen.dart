@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../data/lowongan_dilihat_repository.dart';
+import '../data/notifikasi_repository.dart';
+import '../data/user_session.dart';
 import '../models/job.dart';
 import '../models/lamaran.dart';
 import '../routes/app_routes.dart';
@@ -28,6 +31,25 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> {
   Job get item => widget.item;
+
+  @override
+  void initState() {
+    super.initState();
+    // FR-05: Dicatat otomatis saat pengguna membuka detail lowongan (PRD 2.5)
+    final userId = UserSession().currentUserId;
+    LowonganDilihatRepository().catatDilihat(
+      userId: userId,
+      jobId: item.id,
+    );
+
+    // Cek pengingat batas akhir jika lowongan ini ditutup dalam <= 24 jam
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotifikasiRepository().periksaPengingatBatasAkhir(
+        userId: userId,
+        semuaLowongan: [item],
+      );
+    });
+  }
 
   Future<void> _lamarPekerjaan() async {
     // 1. Buka form pengajuan lamaran
@@ -74,6 +96,10 @@ class _DetailScreenState extends State<DetailScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          if (item.isClosingWithin24Hours) ...[
+            _buildDeadlineWarning(),
+            const SizedBox(height: 14),
+          ],
           _buildHero(),
           const SizedBox(height: 16),
           if (item.benefits.isNotEmpty) ...[
@@ -92,6 +118,90 @@ class _DetailScreenState extends State<DetailScreen> {
         ],
       ),
       bottomNavigationBar: _buildBottomBar(context),
+    );
+  }
+
+  // ---------- FR-05: Peringatan Batas Akhir (< 24 Jam) ----------
+  Widget _buildDeadlineWarning() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFFB74D), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14E65100),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF9800),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.alarm,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Batas Lamaran Segera Berakhir!',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB76E00),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE65100),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        item.remainingTimeString,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Lowongan ini akan ditutup dalam kurun waktu 24 jam (${item.deadline}). Segera ajukan lamaran sebelum pendaftaran ditutup!',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    color: Color(0xFF663C00),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

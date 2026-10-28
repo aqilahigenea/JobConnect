@@ -7,6 +7,9 @@ class UserSession {
   String? _currentUser;
   String? _fullName;
 
+  /// ID unik pengguna aktif (default ke NIM mahasiswa jika belum login)
+  String get currentUserId => _currentUser ?? '2411521005';
+
   /// Dipanggil saat registrasi pengguna baru
   void registerUser({required String name, required String email}) {
     _fullName = name;
